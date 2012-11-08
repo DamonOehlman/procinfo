@@ -1,7 +1,8 @@
 var exec = require('child_process').exec,
     searchers = {},
     reLineBreak = /\r?\n/,
-    reFloat = /^(\d|\.)+$/;
+    reFloat = /^(\d|\.)+$/,
+    disallowedFields = ['pid', 'comm', 'command', 'args'];
 
 var fields = [
     'state',
@@ -55,8 +56,8 @@ searchers.search = function(pattern, callback) {
 };
 
 searchers.detail = function(pids, callback) {
-    var queryFields = ['pid'].concat(fields).concat('command'),
-        commandFieldIdx = queryFields.length - 1;
+    var queryFields = ['pid'].concat(fields).concat(['comm', 'args']),
+        argsFieldIdx = queryFields.length - 1;
 
     exec('ps -o ' + queryFields.join(',') + ' -p' + pids.join(','), function(err, stdout) {
         var lines, results = { pids: [] };
@@ -72,7 +73,7 @@ searchers.detail = function(pids, callback) {
             // if we have a valid pid, then process the line
             if (pid) {
                 // concat any trailing args into the final arg field
-                fields[commandFieldIdx] = fields.splice(commandFieldIdx).join(' ');
+                fields[argsFieldIdx] = fields.splice(argsFieldIdx + 1);
 
                 // map the fields onto the object data
                 queryFields.slice(1).forEach(function(fieldName, index) {
@@ -80,6 +81,9 @@ searchers.detail = function(pids, callback) {
 
                     data[fieldName] = reFloat.test(rawValue) ? parseFloat(rawValue) : rawValue;
                 });
+
+                // calculate the command field
+                data.command = data.comm + ' ' + data.args.join(' ');
 
                 // add the pid data to the results
                 results[pid] = data;
