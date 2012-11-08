@@ -1,0 +1,29 @@
+{
+  "name": "procinfo",
+  "description": "Simple Process Information Helpers for Node",
+  "author": "Damon Oehlman <damon.oehlman@sidelab.com>",
+  "tags": [
+    "process",
+    "pid",
+    "query"
+  ],
+  "version": "0.0.0",
+  "engines": {
+    "node": ">= 0.6.x < 0.9.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "1.6.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/DamonOehlman/procinfo.git"
+  },
+  "bugs": {
+    "url": "http://github.com/DamonOehlman/procinfo/issues"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha"
+  },
+  "contributors": []
+}
