@@ -5,7 +5,7 @@ describe('process discovery', function() {
     it('should be able to locate all the node processes', function(done) {
         procinfo('node', function(err, results) {
             assert.ifError(err);
-            assert(results.length > 0, 'Could not locate any node processes');
+            assert(results.pids.length > 0, 'Could not locate any node processes');
 
             done();
         });
