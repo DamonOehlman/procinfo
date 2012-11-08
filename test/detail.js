@@ -20,8 +20,6 @@ describe('process detail', function() {
             assert.ifError(err);
             assert.equal(results.pids.length, testPids.length);
 
-            console.log(results);
-
             done();
         });
     });
