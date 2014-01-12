@@ -66,7 +66,7 @@ searchers.detail = function(pids, callback) {
 
         // iterate through the valid output lines and process the output
         stdout.split(reLineBreak).slice(1).forEach(function(line) {
-            var fields = line.split(/\s+/),
+            var fields = line.trim().split(/\s+/),
                 pid = parseInt(fields[0], 10),
                 data = {};
 
