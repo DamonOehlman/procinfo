@@ -1,9 +1,13 @@
 const { find } = require('..');
+const chalk = require('chalk');
 
 find('node', function(err, results) {
-  // output the pids that have been found matching node (case insensitive)
-  console.log(results.pids);
+  if (err) {
+    return console.log('error looking for node processes');
+  }
 
-  // now output the basic process details for the first process
-  console.log(results[results.pids[0]]);
+  console.log(chalk.bold('matching node processes:'));
+  for (let [ pid, command ] of results) {
+    console.log(`${chalk.blue.bold(pid)}\n${chalk.grey(command)}\n`);
+  }
 });

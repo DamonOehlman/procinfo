@@ -52,6 +52,7 @@ const exec = require('child_process').exec;
 const searchers = {};
 const reLineBreak = /\r?\n/;
 const reFloat = /^(\d|\.)+$/;
+const reCommandLine = /^\s*([0-9]+)\s+(.*)$/;
 const disallowedFields = ['pid', 'comm', 'command', 'args'];
 
 const DEFAULT_FIELDS = [
@@ -70,41 +71,24 @@ function find(pattern, callback) {
   }
 
   exec('ps ax -o pid,command', function(err, output) {
-    const results = { pids: [] };
     if (err) {
       return callback(err);
     }
 
-    // split the lines on a line break
-    // and remove the header line
     const lines = output.split(reLineBreak).slice(1);
 
-    // strip the pid from the lines
-    const processes = lines.map(function(line) {
-      return line.slice(6);
-    });
+    // find the results where:
+    // 1. A result is a valid line formatted as <pid> <command>
+    // 2. <command> matches the pattern specified
+    const results = new Map(lines.map(line => {
+      const match = reCommandLine.exec(line);
 
-    // iterate through the processes and look for a match against the pattern
-    processes.forEach(function(command, index) {
-      let pid;
-      if (pattern.test(command)) {
-        // extract the pid
-        pid = parseInt(lines[index].slice(0, 5), 10);
+      return match && pattern.test(match[2]) && [
+        parseInt(match[1], 10),
+        match[2]
+      ];
+    }).filter(Boolean));
 
-        // add the pid to the pid array
-        results.pids.push(pid);
-
-        // add the pid detail
-        results[pid] = {
-          command: command
-        };
-      }
-    });
-
-    // sort the pids
-    results.pids = results.pids.sort();
-
-    // provide the results to the callback
     callback(null, results);
   });
 }
