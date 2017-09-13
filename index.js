@@ -15,13 +15,13 @@
   Search mode is used when proc info is provided either a string or regular expression to search for in the command
   name output of the `ps` system command.  For instance:
 
-  <<< examples/string-search.js
+  <<< examples/find.js
 
   Using search mode only provides limited information on the process (essentially just the `pid` and the `command` used
   to initiate the process).  For more detailed information we call `procinfo` providing either a number or an
   array of pids to locate:
 
-  <<< examples/procid-search.js
+  <<< examples/get-details.js
 
   At present (probably likely to change) the following fields are included in the default process output:
 
