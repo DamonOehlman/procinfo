@@ -5,6 +5,7 @@
   "version": "0.1.4",
   "dependencies": {},
   "devDependencies": {
+    "gendocs": "^2.0.0",
     "mocha": "~1.16.2"
   },
   "repository": {
@@ -15,7 +16,8 @@
     "url": "http://github.com/DamonOehlman/procinfo/issues"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha"
+    "test": "mocha",
+    "gendocs": "gendocs > README.md"
   },
   "contributors": [],
   "homepage": "https://github.com/DamonOehlman/procinfo",
