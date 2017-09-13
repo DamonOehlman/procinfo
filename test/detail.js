@@ -1,8 +1,9 @@
 const assert = require('assert');
 const procinfo = require('../');
-const testPids = [];
 
 describe('process detail', function() {
+  let testPids = [];
+
   it('should be able to locate all the node processes', function(done) {
     procinfo('node', function(err, results) {
       assert.ifError(err);
