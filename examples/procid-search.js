@@ -1,6 +1,6 @@
-const procinfo = require('..');
+const { getDetails } = require('..');
 
-procinfo(1, function(err, results) {
+getDetails({ pids: [1] }, function(err, results) {
   // output the pids that have been found (should be just pid: 1)
   console.log(results.pids);
  

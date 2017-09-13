@@ -1,6 +1,6 @@
-const procinfo = require('..');
+const { find } = require('..');
 
-procinfo('node', function(err, results) {
+find('node', function(err, results) {
   // output the pids that have been found matching node (case insensitive)
   console.log(results.pids);
 

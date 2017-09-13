@@ -21,9 +21,9 @@ Search mode is used when proc info is provided either a string or regular expres
 name output of the `ps` system command.  For instance:
 
 ```js
-const procinfo = require('procinfo');
+const { find } = require('procinfo');
 
-procinfo('node', function(err, results) {
+find('node', function(err, results) {
   // output the pids that have been found matching node (case insensitive)
   console.log(results.pids);
 
@@ -38,9 +38,9 @@ to initiate the process).  For more detailed information we call `procinfo` prov
 array of pids to locate:
 
 ```js
-const procinfo = require('procinfo');
+const { getDetails } = require('procinfo');
 
-procinfo(1, function(err, results) {
+getDetails({ pids: [1] }, function(err, results) {
   // output the pids that have been found (should be just pid: 1)
   console.log(results.pids);
  

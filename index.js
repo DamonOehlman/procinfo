@@ -54,7 +54,7 @@ const reLineBreak = /\r?\n/;
 const reFloat = /^(\d|\.)+$/;
 const disallowedFields = ['pid', 'comm', 'command', 'args'];
 
-const fields = [
+const DEFAULT_FIELDS = [
   'state',
   'ppid',
   'time',
@@ -64,7 +64,11 @@ const fields = [
   'pmem'
 ];
 
-searchers.search = function(pattern, callback) {
+function find(pattern, callback) {
+  if (!(pattern instanceof RegExp)) {
+    pattern = new RegExp(pattern, 'i');
+  }
+
   exec('ps ax -o pid,command', function(err, output) {
     const results = { pids: [] };
     if (err) {
@@ -103,9 +107,11 @@ searchers.search = function(pattern, callback) {
     // provide the results to the callback
     callback(null, results);
   });
-};
+}
 
-searchers.detail = function(pids, callback) {
+function getDetails(opts, callback) {
+  const pids = (opts || {}).pids || [];
+  const fields = (opts || {}).fields || DEFAULT_FIELDS;
   const queryFields = ['pid'].concat(fields).concat(['comm', 'args']);
   const argsFieldIdx = queryFields.length - 1;
 
@@ -144,40 +150,6 @@ searchers.detail = function(pids, callback) {
     // fire the callback
     callback(null, results);
   });
-};
-
-function procinfo(target, callback) {
-  let searchType = 'regex';
-
-  // if the target is an array or a number then go into pid detail search mode
-  if (Array.isArray(target) || typeof target == 'number') {
-    target = [].concat(target);
-    searchType = 'detail';
-  }
-  else if (typeof target == 'string' || (target instanceof String)) {
-    target = new RegExp(target, 'i');
-  }
-
-  (searchers[searchType] || searchers.search).call(this, target, callback);
 }
 
-// initialise the fields property on procinfo
-Object.defineProperty(procinfo, 'fields', {
-  get: function() {
-    return [].concat(fields);
-  },
-
-  set: function(newFields) {
-    // reset the fields
-    fields = [];
-
-    // iterate through the new fields and add acceptable fields
-    newFields.forEach(function(newField) {
-      if (disallowedFields.indexOf(newField) < 0) {
-        fields[fields.length] = newField;
-      }
-    });
-  }
-});
-
-module.exports = procinfo;
+module.exports = { find, getDetails };
