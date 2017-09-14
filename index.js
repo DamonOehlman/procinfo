@@ -53,6 +53,7 @@ const searchers = {};
 const reLineBreak = /\r?\n/;
 const reFloat = /^(\d|\.)+$/;
 const reCommandLine = /^\s*([0-9]+)\s+(.*)$/;
+const rePid = /^\s*([0-9]+)\s+/;
 const disallowedFields = ['pid', 'comm', 'command', 'args'];
 
 const DEFAULT_FIELDS = [
@@ -93,47 +94,51 @@ function find(pattern, callback) {
   });
 }
 
-function getDetails(opts, callback) {
-  const pids = (opts || {}).pids || [];
-  const fields = (opts || {}).fields || DEFAULT_FIELDS;
-  const queryFields = ['pid'].concat(fields).concat(['comm', 'args']);
+function getDetailsForPid(pid, callback) {
+  return getDetails([pid], fields);
+}
+
+function getDetails(pids, callback) {
+  // const fields = (opts || {}).fields || DEFAULT_FIELDS;
+  const queryFields = ['pid'].concat(DEFAULT_FIELDS).concat(['comm', 'args']);
   const argsFieldIdx = queryFields.length - 1;
 
-  exec('ps -o ' + queryFields.join(',') + ' -p' + pids.join(','), function(err, stdout) {
+  exec('ps -Ao ' + queryFields.join(','), function(err, stdout) {
     const results = { pids: [] };
     if (err) {
       return callback(err);
     }
 
     // iterate through the valid output lines and process the output
-    stdout.split(reLineBreak).slice(1).forEach(function(line) {
-      const fields = line.trim().split(/\s+/);
-      const pid = parseInt(fields[0], 10);
-      const data = {};
-
-      // if we have a valid pid, then process the line
-      if (pid) {
-        // concat any trailing args into the final arg field
-        fields[argsFieldIdx] = fields.splice(argsFieldIdx + 1);
-
-        // map the fields onto the object data
-        queryFields.slice(1).forEach(function(fieldName, index) {
-          const rawValue = fields[index + 1];
-          data[fieldName] = reFloat.test(rawValue) ? parseFloat(rawValue) : rawValue;
-        });
-
-        // calculate the command field
-        data.command = data.comm + ' ' + data.args.join(' ');
-
-        // add the pid data to the results
-        results[pid] = data;
-        results.pids.push(pid);
+    const pidMapData = stdout.split(reLineBreak).slice(1).map(line => {
+      const pid = getPid(line);
+      if (!pid || pids.indexOf(pid) < 0) {
+        return null;
       }
-    });
+      
+      const fields = line.trim().split(/\s+/).slice(1);
+      const pidDataMap = new Map(queryFields.map((fieldName, index) => {
+        const rawValue = fields[index];
+
+        return [
+          fieldName,
+          reFloat.test(rawValue) ? parseFloat(rawValue) : rawValue
+        ];
+      }));
+
+      return [pid, pidDataMap];
+    }).filter(Boolean);
 
     // fire the callback
-    callback(null, results);
+    callback(null, new Map(pidMapData));
   });
+}
+
+function getPid(outputLine) {
+  const match = rePid.exec(outputLine);
+  const pid = match && parseInt(match[1], 10);
+
+  return isNaN(pid) ? null : pid;
 }
 
 module.exports = { find, getDetails };
