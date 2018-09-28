@@ -15,13 +15,13 @@
   Search mode is used when proc info is provided either a string or regular expression to search for in the command
   name output of the `ps` system command.  For instance:
 
-  <<< examples/string-search.js
+  <<< examples/find.js
 
   Using search mode only provides limited information on the process (essentially just the `pid` and the `command` used
   to initiate the process).  For more detailed information we call `procinfo` providing either a number or an
   array of pids to locate:
 
-  <<< examples/procid-search.js
+  <<< examples/get-details.js
 
   At present (probably likely to change) the following fields are included in the default process output:
 
@@ -52,9 +52,11 @@ const exec = require('child_process').exec;
 const searchers = {};
 const reLineBreak = /\r?\n/;
 const reFloat = /^(\d|\.)+$/;
+const reCommandLine = /^\s*([0-9]+)\s+(.*)$/;
+const rePid = /^\s*([0-9]+)\s+/;
 const disallowedFields = ['pid', 'comm', 'command', 'args'];
 
-const fields = [
+const DEFAULT_FIELDS = [
   'state',
   'ppid',
   'time',
@@ -64,120 +66,79 @@ const fields = [
   'pmem'
 ];
 
-searchers.search = function(pattern, callback) {
+function find(pattern, callback) {
+  if (!(pattern instanceof RegExp)) {
+    pattern = new RegExp(pattern, 'i');
+  }
+
   exec('ps ax -o pid,command', function(err, output) {
-    const results = { pids: [] };
     if (err) {
       return callback(err);
     }
 
-    // split the lines on a line break
-    // and remove the header line
     const lines = output.split(reLineBreak).slice(1);
 
-    // strip the pid from the lines
-    const processes = lines.map(function(line) {
-      return line.slice(6);
-    });
+    // find the results where:
+    // 1. A result is a valid line formatted as <pid> <command>
+    // 2. <command> matches the pattern specified
+    const results = new Map(lines.map(line => {
+      const match = reCommandLine.exec(line);
 
-    // iterate through the processes and look for a match against the pattern
-    processes.forEach(function(command, index) {
-      let pid;
-      if (pattern.test(command)) {
-        // extract the pid
-        pid = parseInt(lines[index].slice(0, 5), 10);
+      return match && pattern.test(match[2]) && [
+        parseInt(match[1], 10),
+        match[2]
+      ];
+    }).filter(Boolean));
 
-        // add the pid to the pid array
-        results.pids.push(pid);
-
-        // add the pid detail
-        results[pid] = {
-          command: command
-        };
-      }
-    });
-
-    // sort the pids
-    results.pids = results.pids.sort();
-
-    // provide the results to the callback
     callback(null, results);
   });
-};
+}
 
-searchers.detail = function(pids, callback) {
-  const queryFields = ['pid'].concat(fields).concat(['comm', 'args']);
+function getDetailsForPid(pid, callback) {
+  return getDetails([pid], fields);
+}
+
+function getDetails(pids, callback) {
+  // const fields = (opts || {}).fields || DEFAULT_FIELDS;
+  const queryFields = ['pid'].concat(DEFAULT_FIELDS).concat(['comm', 'args']);
   const argsFieldIdx = queryFields.length - 1;
 
-  exec('ps -o ' + queryFields.join(',') + ' -p' + pids.join(','), function(err, stdout) {
+  exec('ps -Ao ' + queryFields.join(','), function(err, stdout) {
     const results = { pids: [] };
     if (err) {
       return callback(err);
     }
 
     // iterate through the valid output lines and process the output
-    stdout.split(reLineBreak).slice(1).forEach(function(line) {
-      const fields = line.trim().split(/\s+/);
-      const pid = parseInt(fields[0], 10);
-      const data = {};
-
-      // if we have a valid pid, then process the line
-      if (pid) {
-        // concat any trailing args into the final arg field
-        fields[argsFieldIdx] = fields.splice(argsFieldIdx + 1);
-
-        // map the fields onto the object data
-        queryFields.slice(1).forEach(function(fieldName, index) {
-          const rawValue = fields[index + 1];
-          data[fieldName] = reFloat.test(rawValue) ? parseFloat(rawValue) : rawValue;
-        });
-
-        // calculate the command field
-        data.command = data.comm + ' ' + data.args.join(' ');
-
-        // add the pid data to the results
-        results[pid] = data;
-        results.pids.push(pid);
+    const pidMapData = stdout.split(reLineBreak).slice(1).map(line => {
+      const pid = getPid(line);
+      if (!pid || pids.indexOf(pid) < 0) {
+        return null;
       }
-    });
+      
+      const fields = line.trim().split(/\s+/).slice(1);
+      const pidDataMap = new Map(queryFields.map((fieldName, index) => {
+        const rawValue = fields[index];
+
+        return [
+          fieldName,
+          reFloat.test(rawValue) ? parseFloat(rawValue) : rawValue
+        ];
+      }));
+
+      return [pid, pidDataMap];
+    }).filter(Boolean);
 
     // fire the callback
-    callback(null, results);
+    callback(null, new Map(pidMapData));
   });
-};
-
-function procinfo(target, callback) {
-  let searchType = 'regex';
-
-  // if the target is an array or a number then go into pid detail search mode
-  if (Array.isArray(target) || typeof target == 'number') {
-    target = [].concat(target);
-    searchType = 'detail';
-  }
-  else if (typeof target == 'string' || (target instanceof String)) {
-    target = new RegExp(target, 'i');
-  }
-
-  (searchers[searchType] || searchers.search).call(this, target, callback);
 }
 
-// initialise the fields property on procinfo
-Object.defineProperty(procinfo, 'fields', {
-  get: function() {
-    return [].concat(fields);
-  },
+function getPid(outputLine) {
+  const match = rePid.exec(outputLine);
+  const pid = match && parseInt(match[1], 10);
 
-  set: function(newFields) {
-    // reset the fields
-    fields = [];
+  return isNaN(pid) ? null : pid;
+}
 
-    // iterate through the new fields and add acceptable fields
-    newFields.forEach(function(newField) {
-      if (disallowedFields.indexOf(newField) < 0) {
-        fields[fields.length] = newField;
-      }
-    });
-  }
-});
-
-module.exports = procinfo;
+module.exports = { find, getDetails };
